@@ -27,15 +27,40 @@ app.post("/api/upload", upload.array("files"), async (req, res) => {
 
 app.post("/api/call/v2/generate", async (req, res) => {
   try {
+    const payload = { ...req.body };
+
+    if (Array.isArray(payload.data)) {
+      for (const index of [2, 3]) {
+        const image = payload.data[index];
+
+        if (
+          image &&
+          typeof image === "object" &&
+          image.path == null &&
+          image.url == null
+        ) {
+          payload.data[index] = null;
+        }
+      }
+    }
+
     const upstream = await fetch(`${HF}/gradio_api/call/v2/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify(payload)
     });
+
     const body = await upstream.text();
-    res.status(upstream.status).type(upstream.headers.get("content-type") || "application/json").send(body);
+
+    res.status(upstream.status)
+      .type(upstream.headers.get("content-type") || "application/json")
+      .send(body);
+
   } catch (err) {
-    res.status(502).json({ error: "Generation request proxy failed", detail: err.message });
+    res.status(502).json({
+      error: "Generation request proxy failed",
+      detail: err.message
+    });
   }
 });
 
